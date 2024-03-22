@@ -1,0 +1,23 @@
+### Repositories
+* https://github.com/privvyledge/Azure_Kinect_ROS_Driver.git
+* https://github.com/logivations/Azure_Kinect_ROS_Driver.git
+* https://github.com/orbbec/OrbbecSDK_ROS2
+* https://github.com/orbbec/OrbbecSDK-K4A-Wrapper
+* https://github.com/microsoft/Azure-Kinect-Sensor-SDK
+* https://github.com/microsoft/Azure_Kinect_ROS_Driver/tree/humble
+
+#### Installations from Sources
+### Tutorials/Dockerfiles
+* https://github.com/chakio/azure_kinect_on_jetson_xavier/blob/master/Dockerfile
+* https://github.com/chakio/azure_kinect_ros/blob/devel/Dockerfile
+* https://github.com/wmcelderry/azure_kinect_sdk_scripts/blob/master/prepare_sdk.sh
+* https://vinesmsuic.github.io/azure-kinect-setup/#Sensor-SDK-via-source
+* https://tianyusong.com/2019/11/13/how-to-install-azure-kinect-sdk-on-ubuntu-16-04/
+* https://vinesmsuic.github.io/azure-kinect-ros-setup/#Pre-requisites
+* https://github.com/microsoft/Azure_Kinect_ROS_Driver/issues/133
+
+
+#### Azure Kinect Git and potential improvements e.g composable nodes
+## Azure Kinect ROS Humble Diffs
+* https://github.com/microsoft/Azure_Kinect_ROS_Driver/compare/humble...logivations:Azure_Kinect_ROS_Driver:humble_release-13.1
+* https://github.com/logivations/Azure_Kinect_ROS_Driver/compare/humble_release-13.1...logivations:Azure_Kinect_ROS_Driver:humble_release-13.6.x
