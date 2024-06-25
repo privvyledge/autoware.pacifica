@@ -598,7 +598,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
 ## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
 ## Todo: test realsense support
-RUN sudo apt remove python3-open3d && python3 -m pip uninstall open3d && \
+RUN sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
     cd /sdks && \
     git clone https://github.com/isl-org/Open3D.git && \
 #    git clone https://github.com/rislab/Open3D.git && \
