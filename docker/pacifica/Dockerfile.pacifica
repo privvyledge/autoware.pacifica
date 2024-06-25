@@ -318,7 +318,7 @@ RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/Azure_Kinect_
 #-------------------------------------------------
 # Setup Raptor DBW ROS
 #-------------------------------------------------
-COPY ../scripts/raptor_dbw_ros/setup_raptor_dbw.sh /pacifica_ws/setup_raptor_dbw.sh
+COPY ./scripts/raptor_dbw_ros/setup_raptor_dbw.sh /pacifica_ws/setup_raptor_dbw.sh
 RUN chmod +x /pacifica_ws/setup_raptor_dbw.sh && bash /pacifica_ws/setup_raptor_dbw.sh && rm /pacifica_ws/setup_raptor_dbw.sh
 RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/raptor-dbw-ros2.git
 
