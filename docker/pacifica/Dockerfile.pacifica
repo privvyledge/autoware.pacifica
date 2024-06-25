@@ -427,26 +427,26 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 # todo: set envs above instead of exporting
 # Tested with v2.55.1 and firmware 5.15.1
 # branches R/255, R/2542, master, development, etc
-ARG LIBREALSENSE_BRANCH="master"
-RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/x86_64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
-    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
-    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
-    cd librealsense && \
-    mkdir build && \
-    cd build && \
-    cmake \
-       -DBUILD_EXAMPLES=true \
-	   -DFORCE_RSUSB_BACKEND=true \
-	   -DBUILD_WITH_CUDA=true \
-       -DBUILD_WITH_OPENMP=false \
-	   -DCMAKE_BUILD_TYPE=Release \
-	   -DBUILD_PYTHON_BINDINGS:BOOL=true \
-	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-       -DBUILD_GRAPHICAL_EXAMPLES=true \
-	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
-	   ../ && \
-    make -j$(($(nproc)-1)) && \
-    sudo make install
+#ARG LIBREALSENSE_BRANCH="master"
+#RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/x86_64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
+#    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
+#    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
+#    cd librealsense && \
+#    mkdir build && \
+#    cd build && \
+#    cmake \
+#       -DBUILD_EXAMPLES=true \
+#	   -DFORCE_RSUSB_BACKEND=true \
+#	   -DBUILD_WITH_CUDA=true \
+#       -DBUILD_WITH_OPENMP=false \
+#	   -DCMAKE_BUILD_TYPE=Release \
+#	   -DBUILD_PYTHON_BINDINGS:BOOL=true \
+#	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+#       -DBUILD_GRAPHICAL_EXAMPLES=true \
+#	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
+#	   ../ && \
+#    make -j$(($(nproc)-1)) && \
+#    sudo make install
 
 #ARG LIBREALSENSE_VERSION="2.54.2"
 #RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
