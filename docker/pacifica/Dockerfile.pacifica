@@ -300,7 +300,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-joint-state-publisher && \
     sudo rm -rf /var/lib/apt/lists/*
 COPY ./scripts/azure_kinect/setup_azure_kinect_ros.sh /pacifica_ws/setup_azure_kinect_ros.sh
-RUN chmod +x /pacifica_ws/azure_kinect_ros_setup.sh && bash /pacifica_ws/setup_azure_kinect_ros.sh
+RUN chmod +x /pacifica_ws/setup_azure_kinect_ros.sh && bash /pacifica_ws/setup_azure_kinect_ros.sh
 
 RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/Azure_Kinect_ROS_Driver.git -b humble
 #RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/Azure_Kinect_ROS_Driver.git -b humble && \
