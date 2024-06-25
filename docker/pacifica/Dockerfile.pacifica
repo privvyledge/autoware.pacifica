@@ -476,7 +476,7 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 #    rm ${REALSENSE_ROS_VERSION}.zip
 
 # Tested with version 4.55.1
-RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
+RUN #cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
