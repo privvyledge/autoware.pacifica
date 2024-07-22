@@ -1,19 +1,12 @@
-# todo: fix Realsense issues: color image, gyro, accel, point clouds, GPU
-# todo: switch to a dusty_nv container https://github.com/dusty-nv/jetson-containers/blob/master/packages/ros/Dockerfile.ros2
-# todo: setup NVIDIA ISAAC NVBLOX (mapping) and map localizer
-# Todo: setup Nvidia ISAAC ROS vSLAM
-# todo: setup particle filter
+#todo: install Open3D with CUDA
 # pull base image
 
-# todo: remove old images
-# Autoware Old: https://github.com/autowarefoundation/autoware/pkgs/container/autoware-universe/versions?filters%5Bversion_type%5D=tagged
-#FROM ghcr.io/autowarefoundation/autoware-universe:humble-latest-cuda
-#FROM ghcr.io/autowarefoundation/autoware-universe:humble-latest-prebuilt-cuda-amd64
-
 # New images
-# Autoware: https://github.com/autowarefoundation/autoware/pkgs/container/autoware-openadk/versions?filters%5Bversion_type%5D=tagged
-FROM ghcr.io/autowarefoundation/autoware-openadk:latest-humble-devel-cuda-amd64
-#FROM ghcr.io/autowarefoundation/autoware-openadk:latest-humble-runtime-cuda-amd64
+# ROS Distro: humble
+# Date: 06/18/2024. Replace the date with "latest-humble"
+# Devel or runtime
+# CUDA or no CUDA
+FROM ghcr.io/autowarefoundation/autoware:20240618-devel-cuda-amd64
 
 # Set up the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -22,7 +15,7 @@ ENV TZ=America/New_York
 # Setup user
 ARG USER=autoware
 ARG USERNAME=${USER}
-ENV USERNAME ${USERNAME}
+ENV USERNAME=${USERNAME}
 
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
@@ -37,7 +30,7 @@ RUN groupadd --gid $USER_GID $USERNAME && \
         chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Setup env and shell
-ENV LOGNAME root
+ENV LOGNAME=root
 ARG DEBIAN_FRONTEND=noninteractive
 ARG DEBCONF_NONINTERACTIVE_SEEN=true
 
@@ -50,8 +43,8 @@ ENV ROS_DISTRO=${ROS_DISTRO}
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-ENV NVIDIA_DRIVER_CAPABILITIES all
-ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES=all
+ENV NVIDIA_VISIBLE_DEVICES=all
 
 # Install Sudo
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -yq sudo tzdata && \
@@ -176,7 +169,7 @@ RUN python3 -m pip install -U \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # Install Python Packages.
-RUN python3 -m pip install do-mpc casadi
+RUN python3 -m pip install do-mpc casadi kornia==0.7.3 networkx
 
 # Initialize ROS workspace
 ENV BUILD_HOME=/pacifica_ws
@@ -200,24 +193,32 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     python3 -m pip install transforms3d numpy && \
     sudo rm -rf /var/lib/apt/lists/*
 
-#################################################### (Optional) Setup F1tenth. Todo: setup IMU fix on humble branch
-RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.com/privvyledge/f1tenth_system.git -b foxy-devel && \
+#################################################### (Optional) Setup F1tenth and VESC.
+RUN cd "$BUILD_HOME/src" && rm -rf f1tenth_system && git clone https://github.com/privvyledge/f1tenth_system.git -b humble-devel && \
     cd f1tenth_system && git submodule update --init --force --remote && \
-    cd vesc && git checkout ros2_motor_direction_fix
-#################################################### (Optional) Setup VESC
-#################################################### (Optional) Setup Autoware
+    cd vesc && git checkout humble-devel
 
-#################################################### (Optional) Setup ROS Nav
+#################################################### Setup gazebo sources due to key change issue
+#RUN sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
+#    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+
+#################################################### (Optional) Setup ROS Nav.
+# Recommended: build to get the latest bug fixes. Note: we can't build due to ignition->gazebo migration
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-behaviortree-cpp-v3 \
     ros-${ROS_DISTRO}-nav2-msgs \
     ros-${ROS_DISTRO}-navigation2 \
     ros-${ROS_DISTRO}-nav2-bringup && \
     sudo rm -rf /var/lib/apt/lists/*
-# RUN  sudo apt remove ros-humble-navigation2 ros-humble-nav2* && sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-gazebo-ros-pkgs && \
-#    cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
-#    sudo rm -rf /var/lib/apt/lists/*
+#RUN  cd "${BUILD_HOME}/src" && && \
+##     mkdir -p gazebo/src && cd gazebo && \
+##     wget https://raw.githubusercontent.com/ros-simulation/gazebo_ros_pkgs/ros2/gazebo_ros_pkgs.repos && \
+##     vcs import src < gazebo_ros_pkgs.repos && \
+##     vcs custom --args checkout humble && \
+#     sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends && \
+#     ros-${ROS_DISTRO}-gazebo-ros-pkgs ros-${ROS_DISTRO}-behaviortree-cpp-v3 && \
+#     cd "$BUILD_HOME/src" && git clone --recursive https://github.com/ros-planning/navigation2.git -b ${ROS_DISTRO} && \
+#     sudo rm -rf /var/lib/apt/lists/*
 
 #-------------------------------------------------
 # Setup Spatio Temporal Voxel Layer (STVL) and other voxel packages for 3D occupancy representation. Can install from debs if 3+ hours compile time is too long.
@@ -267,10 +268,12 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/laser_filters.git -b ros2
 
 #################################################### Setup depth image to laser scan. No need as its already in the container
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
-    sudo rm -rf /var/lib/apt/lists/*
-# RUN #cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-depthimage-to-laserscan  && \
+#    sudo rm -rf /var/lib/apt/lists/*
+# RUN cd "$BUILD_HOME/src" && git clone https://github.com/ros-perception/depthimage_to_laserscan.git -b ros2
+## Switch back to the main branch above after this pull request has been merged or any other fix for the QoS issues (https://github.com/ros-perception/depthimage_to_laserscan/pull/76)
+RUN cd "$BUILD_HOME/src" && git clone https://github.com/Myzhar/depthimage_to_laserscan.git -b ros2_fix_qos_for_ipc
 
 #################################################### Setup rf2o laser odometry
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/MAPIRlab/rf2o_laser_odometry.git
@@ -427,27 +430,32 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 # todo: set envs above instead of exporting
 # Tested with v2.55.1 and firmware 5.15.1
 # branches R/255, R/2542, master, development, etc
-#ARG LIBREALSENSE_BRANCH="master"
-#RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/x86_64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
-#    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
-#    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
-#    cd librealsense && \
-#    mkdir build && \
-#    cd build && \
-#    cmake \
-#       -DBUILD_EXAMPLES=true \
-#	   -DFORCE_RSUSB_BACKEND=true \
-#	   -DBUILD_WITH_CUDA=true \
-#       -DBUILD_WITH_OPENMP=false \
-#	   -DCMAKE_BUILD_TYPE=Release \
-#	   -DBUILD_PYTHON_BINDINGS:BOOL=true \
-#	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-#       -DBUILD_GRAPHICAL_EXAMPLES=true \
-#	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
-#	   ../ && \
-#    make -j$(($(nproc)-1)) && \
-#    sudo make install
+ARG LIBREALSENSE_BRANCH="v2.55.1"
+RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/x86_64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
+    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
+    cd /sdks && git clone --branch ${LIBREALSENSE_BRANCH} --depth=1 https://github.com/IntelRealSense/librealsense && \
+    cd librealsense && \
+    mkdir build && \
+    cd build && \
+    cmake \
+       -DBUILD_EXAMPLES=true \
+	   -DFORCE_RSUSB_BACKEND=true \
+	   -DBUILD_WITH_CUDA=true \
+       -DBUILD_WITH_OPENMP=false \
+	   -DCMAKE_BUILD_TYPE=Release \
+	   -DBUILD_PYTHON_BINDINGS:bool=true \
+	   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+       -DBUILD_GRAPHICAL_EXAMPLES=true \
+	   -DPYTHON_INSTALL_DIR=$(python3 -c 'import sys; print(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/dist-packages")') \
+	   ../ && \
+    make -j$(($(nproc)-1)) && \
+    sudo make install && \
+    cd ../ && sudo mkdir -p /etc/udev/rules.d/ && \
+    sudo cp ./config/99-realsense-libusb.rules /etc/udev/rules.d/
+#RUN python3 -m pip install pyrealsense2
 
+#ARG LIBREALSENSE_VERSION="2.55.1"
+# https://github.com/IntelRealSense/librealsense/archive/refs/tags/v2.55.1.zip
 #ARG LIBREALSENSE_VERSION="2.54.2"
 #RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/targets/aarch64-linux/lib/stubs:/opt/ros/${ROS_DISTRO}/install/lib && \
 #    export CUDACXX=/usr/local/cuda/bin/nvcc && export PATH=${PATH}:/usr/local/cuda/bin && \
@@ -475,8 +483,9 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/YDLIDAR/ydlidar_ros2_dr
 #    mv realsense-ros-${REALSENSE_ROS_VERSION}/ realsense-ros && \
 #    rm ${REALSENSE_ROS_VERSION}.zip
 
-# Tested with version 4.55.1
-RUN #cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/realsense-ros.git
+# Tested with version v4.55.1. Could try ros2_development
+ARG REALSENSE_ROS_BRANCH="v4.55.1"
+RUN cd ${BUILD_HOME}/src && git clone -b ${REALSENSE_ROS_BRANCH} https://github.com/privvyledge/realsense-ros.git
 
 #################################################### Setup RTAB-Map (which also publishes odometry from laser_scan)
 RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git && git clone https://github.com/introlab/rtabmap_ros.git -b ${ROS_DISTRO}-devel
@@ -492,7 +501,7 @@ RUN cd "$BUILD_HOME/src" && git clone https://github.com/introlab/rtabmap.git &&
 RUN cd ${BUILD_HOME}/src && git clone https://github.com/PRBonn/kiss-icp.git
 
 #----------------------------------------------
-# Install ROSBag support. Todo: test why this is causing performance issues
+# Install ROSBag support.
 # ros-${ROS_DISTRO}-rosbag2*
 #----------------------------------------------
 #RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
@@ -524,6 +533,11 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     ros-${ROS_DISTRO}-camera-calibration-parsers ros-${ROS_DISTRO}-camera-info-manager ros-${ROS_DISTRO}-compressed-image-transport ros-${ROS_DISTRO}-compressed-depth-image-transport \
     ros-${ROS_DISTRO}-image-transport ros-${ROS_DISTRO}-image-transport-plugins && \
     sudo rm -rf /var/lib/apt/lists/*
+
+#----------------------------------------------
+# Install my image recording package
+#----------------------------------------------
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/privvyledge/ros_images_to_files.git
 
 ##----------------------------------------------
 ## Setup Dualshock 4 ROS image. Make sure to setup the drivers on the host. (optional)
@@ -594,14 +608,13 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ##RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
 ##    cuda-11-8 cuda-toolkit-11-8 cuda-compat-11-8 cuda-cudart-11-8 cuda-libraries-11-8
 #
-##RUN python3 -m pip install open3d
-RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
+RUN python3 -m pip install open3d==0.18.0
+#RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
 ## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
 ## Todo: test realsense support
-RUN #sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
+#RUN python3 -m pip uninstall open3d && \
 #    cd /sdks && \
 #    git clone https://github.com/isl-org/Open3D.git && \
-##    git clone https://github.com/rislab/Open3D.git && \
 #    cd Open3D && \
 #    ./util/install_deps_ubuntu.sh assume-yes && \
 #    mkdir build && cd build && git clone https://github.com/isl-org/Open3D-ML.git && \
@@ -628,6 +641,40 @@ RUN #sudo apt remove -y python3-open3d && python3 -m pip uninstall open3d && \
 #--------------------------------
 # Setup NVIDIA Isaac packages
 #--------------------------------
+# Fundamentals
+RUN --mount=type=cache,target=/var/cache/apt \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        bash-completion \
+        build-essential \
+        ca-certificates \
+        clang-format \
+        cmake \
+        curl \
+        git \
+        git-lfs \
+        gnupg2 \
+        iputils-ping \
+        locales \
+        lsb-release \
+        rsync \
+        software-properties-common \
+        wget \
+        vim \
+        unzip \
+        mlocate \
+	    libgoogle-glog-dev
+
+# Python basics
+RUN --mount=type=cache,target=/var/cache/apt \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+        python3-pip \
+        python3-pybind11 \
+        python3-pytest \
+        python3-pytest-repeat \
+        python3-pytest-rerunfailures \
+        python3-pytest-cov
+
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     python3-distutils \
     python3-pytest-cov \
@@ -650,9 +697,29 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
 
+# Core dev libraries
+RUN --mount=type=cache,target=/var/cache/apt \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libasio-dev \
+        libbullet-dev \
+        libtinyxml2-dev \
+        libcunit1-dev \
+        libmnl0 \
+        libmnl-dev \
+        libv4l-dev \
+        libyaml-cpp-dev \
+        libopencv-dev \
+        libpython3.10 \
+        libx264-dev \
+        kmod \
+        patchelf \
+        python3-opencv \
+        nlohmann-json3-dev
+
 # Core dev libraries. Pass "--allow-downgrades" to downgrade Opencv from 4.8.* to 4.5.4
 RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install --allow-downgrades -y --no-install-recommends \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ffmpeg \
     gfortran \
     graphicsmagick-libmagick-dev-compat \
@@ -681,7 +748,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     libncurses5-dev \
     libode-dev \
     libopenblas0 \
-    libopencv-dev=4.5.4+dfsg-9ubuntu4 \
+    libopencv-dev \
     libopenmpi3 \
     libpcap-dev \
     libpcl-dev \
@@ -696,81 +763,143 @@ RUN --mount=type=cache,target=/var/cache/apt \
     libyaml-cpp-dev \
     llvm-14 \
     nlohmann-json3-dev \
-    python3-opencv=4.5.4+dfsg-9ubuntu4 \
+    python3-opencv \
     python3-scipy \
     && sudo rm -rf /var/lib/apt/lists/* \
     && sudo apt-get clean
 
 # Additional Python dependencies. Try with -U flag
 RUN python3 -m pip install -U \
-    Cython \
-    pymongo \
-    wheel \
-    scikit-learn \
-    ninja \
-    networkx \
-    "numpy==1.26.4" \
-    numpy-quaternion \
-    pyyaml \
-    "setuptools_scm>=6.2" \
-    trimesh \
-    "yourdfpy>=0.0.53" \
-    "warp-lang>=0.9.0" \
-    "scipy>=1.7.0" \
-    tqdm \
-    importlib_resources
+        argcomplete \
+        autopep8 \
+        flake8==4.0.1 \
+        flake8-blind-except \
+        flake8-builtins \
+        flake8-class-newline \
+        flake8-comprehensions \
+        flake8-deprecated \
+        flake8-docstrings \
+        flake8-import-order \
+        flake8-quotes \
+        onnx \
+        pydocstyle \
+        scikit-learn \
+        ninja \
+        networkx \
+        numpy \
+        numpy-quaternion \
+        pyyaml \
+        "setuptools_scm>=6.2" \
+        trimesh \
+        "yourdfpy>=0.0.53" \
+        "warp-lang>=0.9.0" \
+        "scipy>=1.7.0" \
+        tqdm \
+        importlib_resources
 
-## Install VPI
-#RUN --mount=type=cache,target=/var/cache/apt \
-#    mkdir -p /lib/firmware && \
-#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    libnvvpi3 \
-#    vpi3-dev && sudo rm -rf /var/lib/apt/lists/* \
-#    && sudo apt-get clean
-#
-### Add Isaac apt repository
-##RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
-##    grep -qxF 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' /etc/apt/sources.list || \
-##    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | tee -a /etc/apt/sources.list
-#
-#RUN --mount=type=cache,target=/var/cache/apt \
-#    wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
-#    grep -qxF "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" /etc/apt/sources.list || \
-#    echo "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" | tee -a /etc/apt/sources.list \
-#    && sudo apt-get update
-#
-### Add Nvidia Isaac dependencies to Rosdep
-##RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
-##    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-#
-#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
+#RUN python3 -m pip install -U \
+#    Cython \
+#    pymongo \
+#    wheel \
+#    scikit-learn \
+#    ninja \
+#    networkx \
+#    "numpy==1.26.4" \
+#    numpy-quaternion \
+#    pyyaml \
+#    "setuptools_scm>=6.2" \
+#    trimesh \
+#    "yourdfpy>=0.0.53" \
+#    "warp-lang>=0.9.0" \
+#    "scipy>=1.7.0" \
+#    tqdm \
+#    importlib_resources
+
+# Install nvv4l2 for GXF Multimedia h264 codec
+RUN --mount=type=cache,target=/var/cache/apt \
+    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+            nvv4l2 \
+    && ln -s /usr/lib/x86_64-linux-gnu/libnvcuvid.so.1 /usr/lib/x86_64-linux-gnu/libnvcuvid.so \
+    && ln -s /usr/lib/x86_64-linux-gnu/libnvidia-encode.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
+
+# Install VPI packages
+ARG HAS_GPU="true"
+RUN --mount=type=cache,target=/var/cache/apt \
+    if [ "$HAS_GPU" = "true" ]; then \
+	    set -e ; \
+        sudo apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc ; \
+        sudo add-apt-repository "deb http://repo.download.nvidia.com/jetson/x86_64/$(lsb_release -cs) r36.3 main" ; \
+        sudo apt-get update ; \
+        sudo apt-get install libnvvpi3 vpi3-dev ; \
+    fi
+
+# Pytorch
+RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
+        torch \
+        torchvision \
+        torchaudio
+
+# Install Tao converter
+RUN mkdir -p /opt/nvidia/tao && cd /opt/nvidia/tao && \
+    wget --content-disposition 'https://api.ngc.nvidia.com/v2/resources/org/nvidia/team/tao/tao-converter/v5.1.0_8.6.3.1_x86/files?redirect=true&path=tao-converter' -O tao-converter && \
+    chmod 755 tao-converter
+
+ENV PATH="${PATH}:/opt/nvidia/tao"
+ENV TRT_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+ENV TRT_INC_PATH="/usr/include/x86_64-linux-gnu"
+
+# Update environment
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib"
+
+# Install CV-CUDA
+RUN --mount=type=cache,target=/var/cache/apt \
+    cd /tmp && \
+    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
+    dpkg -i nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
+    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb && \
+    dpkg -i nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb
+
+# Add Isaac apt repository
+RUN --mount=type=cache,target=/var/cache/apt \
+    wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
+    grep -qxF "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" /etc/apt/sources.list || \
+    echo "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" | tee -a /etc/apt/sources.list \
+    && sudo apt-get update
+
+## Add Nvidia Isaac dependencies to Rosdep
+#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
 #    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-#
-## Add Isaac ROS packages to be compiled.
-#RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
-##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
-##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
-##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
-#    git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
-#    cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
-#    rm COLCON_IGNORE
-#
-################################# Alternatively, install packages from Debians
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-${ROS_DISTRO}-isaac-ros-visual-slam \
-##    ros-${ROS_DISTRO}-isaac-ros-nvblox \
-#    ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
-#    && sudo apt-get clean
-#
-##--------------------------------
-## Install Nvidia Isaac Realsense dependencies
-## Note: do not install "ros-${ROS_DISTRO}-isaac-ros-realsense" as it installs realsense libraries which causes realsense failure.
-##--------------------------------
-#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-#    ros-humble-gxf-isaac-depth-image-proc ros-humble-gxf-isaac-point-cloud ros-humble-gxf-isaac-ros-messages \
-#    ros-humble-gxf-isaac-sgm ros-humble-gxf-isaac-utils \
-#    ros-humble-isaac-ros-stereo-image-proc ros-humble-isaac-ros-depth-image-proc \
-#    ros-humble-isaac-ros-nitros-disparity-image-type ros-humble-isaac-ros-nitros-point-cloud-type
+
+RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
+    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+
+# Add Isaac ROS packages to be compiled.
+RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_map_localization.git && \
+    git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
+    cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
+    rm COLCON_IGNORE
+
+################################ Alternatively, install packages from Debians
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-isaac-ros-visual-slam \
+#    ros-${ROS_DISTRO}-isaac-ros-nvblox \
+    ros-${ROS_DISTRO}-isaac-ros-occupancy-grid-localizer \
+    ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
+    && sudo apt-get clean
+
+#--------------------------------
+# Install Nvidia Isaac Realsense dependencies
+# Note: do not install "ros-${ROS_DISTRO}-isaac-ros-realsense" as it installs realsense libraries which causes realsense failure.
+#--------------------------------
+RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+    ros-humble-gxf-isaac-depth-image-proc ros-humble-gxf-isaac-point-cloud ros-humble-gxf-isaac-ros-messages \
+    ros-humble-gxf-isaac-sgm ros-humble-gxf-isaac-utils \
+    ros-humble-isaac-ros-stereo-image-proc ros-humble-isaac-ros-depth-image-proc \
+    ros-humble-isaac-ros-nitros-disparity-image-type ros-humble-isaac-ros-nitros-point-cloud-type
 
 # Install paho-mqtt for isaac_ros_mission_client
 RUN python3 -m pip install -U \
@@ -819,11 +948,11 @@ ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.comma
 
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
-ARG SKIPPED_ROSDEP_KEYS="lio_sam fast_lio rf2o_laser_odometry cmake_modules pacmod3_msgs  python3-open3d \
+ARG SKIPPED_ROSDEP_KEYS="lio_sam fast_lio rf2o_laser_odometry cmake_modules pacmod3_msgs  python3-open3d open3d \
     librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
 
 ######### (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
-#RUN python3 -m pip uninstall -y setuptools-scm
+RUN python3 -m pip uninstall -y setuptools-scm
 
 RUN sudo apt update && \
     rosdep update && \
@@ -881,7 +1010,7 @@ RUN echo 'alias build="colcon build --symlink-install  --event-handlers console_
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64' >> ~/.bashrc && \
     echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu/tegra' >> ~/.bashrc && \
     echo 'export PATH=${PATH}:/usr/local/cuda/bin' >> ~/.bashrc && \
-    echo 'export PYTHONPATH=${PYTHONPATH}:/usr/local/lib' >> ~/.bashrc && \
+    echo 'export PYTHONPATH=${PYTHONPATH}:/usr/local/lib:/usr/lib/python3/dist-packages' >> ~/.bashrc && \
     echo 'CUDACXX=/usr/local/cuda/bin/nvcc' >> ~/.bashrc && \
     echo 'export ACADOS_ROOT=/sdks/acados' >> ~/.bashrc && \
     echo 'export ACADOS_PATH=${ACADOS_ROOT}' >> ~/.bashrc && \
@@ -900,5 +1029,5 @@ RUN sudo rm -rf /autoware /sdks
 
 ## RUN ros2 doctor # run this if the LIDAR doesn't run (https://github.com/YDLIDAR/ydlidar_ros2_driver/issues/10)
 
-## Todo: remove the lines below
-RUN sudo apt update && sudo apt install gedit cheese nautilus net-tools iputils-ping -y
+## Todo: remove the lines below in Release/production version
+RUN sudo apt update && sudo apt install gedit cheese nautilus net-tools iputils-ping nano -y
