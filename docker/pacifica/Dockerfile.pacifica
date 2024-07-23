@@ -37,7 +37,7 @@ ARG DEBCONF_NONINTERACTIVE_SEEN=true
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV TZ=America/New_York
 
-ARG ROS_VERSION="ROS2"
+ARG ROS_1_OR_2="ROS2"
 ARG ROS_DISTRO="humble"
 ENV ROS_DISTRO=${ROS_DISTRO}
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
@@ -302,8 +302,12 @@ RUN chmod +x /pacifica_ws/setup_quanergy_lidar.sh && sudo bash /pacifica_ws/setu
 RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-joint-state-publisher && \
     sudo rm -rf /var/lib/apt/lists/*
+COPY ./scripts/azure_kinect/install_azure_kinect_sdk.sh /pacifica_ws/install_azure_kinect_sdk.sh
 COPY ./scripts/azure_kinect/setup_azure_kinect_ros.sh /pacifica_ws/setup_azure_kinect_ros.sh
-RUN chmod +x /pacifica_ws/setup_azure_kinect_ros.sh && bash /pacifica_ws/setup_azure_kinect_ros.sh
+RUN chmod +x /pacifica_ws/install_azure_kinect_sdk.sh /pacifica_ws/setup_azure_kinect_ros.sh && \
+    bash /pacifica_ws/install_azure_kinect_sdk.sh && \
+    bash /pacifica_ws/setup_azure_kinect_ros.sh && \
+    rm /pacifica_ws/install_azure_kinect_sdk.sh /pacifica_ws/setup_azure_kinect_ros.sh
 
 RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/Azure_Kinect_ROS_Driver.git -b humble
 #RUN cd $BUILD_HOME/src && git clone https://github.com/privvyledge/Azure_Kinect_ROS_Driver.git -b humble && \
@@ -578,7 +582,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
     cd /sdks && git clone https://github.com/ultralytics/ultralytics && \
     cd ultralytics && \
     python3 -m pip install --upgrade pip wheel && \
-    python3 -m pip install "lap==0.4.0" "typing-extensions>=4.4.0" "onnx==1.14.0" "Bottleneck==1.3.6" "onnxsim>=0.4.33" "onnxslim==0.1.28" "numexpr==2.8.4" "tensorflowjs==3.9.0" && \
+    python3 -m pip install --no-cache-dir "lap==0.4.0" "typing-extensions>=4.4.0" "onnx==1.14.0" "Bottleneck==1.3.6" "onnxsim>=0.4.33" "onnxslim==0.1.28" "numexpr==2.8.4" "tensorflowjs==3.9.0" && \
     cd /sdks/ultralytics/ && python3 -m pip install --no-cache-dir -e ".[export]" && \
 #    cd /sdks/ultralytics/ && python3 -m pip install --no-cache -e . && \
     python3 -m pip install "numpy==1.26.4"
@@ -608,7 +612,7 @@ RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install
 ##RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
 ##    cuda-11-8 cuda-toolkit-11-8 cuda-compat-11-8 cuda-cudart-11-8 cuda-libraries-11-8
 #
-RUN python3 -m pip install open3d==0.18.0
+RUN python3 -m pip install "open3d==0.18.0"
 #RUN sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends python3-open3d
 ## todo: use rislab's fork till the main Open3D repo fixes Jetson CUDA compilation issues
 ## Todo: test realsense support
@@ -638,317 +642,317 @@ RUN python3 -m pip install open3d==0.18.0
 #    make -j$(($(nproc)-1)) && \
 #    make install-pip-package && sudo make install
 
-#--------------------------------
-# Setup NVIDIA Isaac packages
-#--------------------------------
-# Fundamentals
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-        apt-transport-https \
-        bash-completion \
-        build-essential \
-        ca-certificates \
-        clang-format \
-        cmake \
-        curl \
-        git \
-        git-lfs \
-        gnupg2 \
-        iputils-ping \
-        locales \
-        lsb-release \
-        rsync \
-        software-properties-common \
-        wget \
-        vim \
-        unzip \
-        mlocate \
-	    libgoogle-glog-dev
-
-# Python basics
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-        python3-pip \
-        python3-pybind11 \
-        python3-pytest \
-        python3-pytest-repeat \
-        python3-pytest-rerunfailures \
-        python3-pytest-cov
-
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    python3-distutils \
-    python3-pytest-cov \
-    zlib1g-dev \
-    libboost-all-dev \
-    libboost-dev \
-    libpcl-dev \
-    libode-dev \
-    lcov \
-    python3-zmq \
-    libxaw7-dev \
-    libgraphicsmagick++1-dev \
-    graphicsmagick-libmagick-dev-compat \
-    libceres-dev \
-    libsuitesparse-dev \
-    libncurses5-dev \
-    libassimp-dev \
-    libyaml-cpp-dev \
-    libpcap-dev \
-    && sudo rm -rf /var/lib/apt/lists/* \
-    && sudo apt-get clean
-
-# Core dev libraries
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-        ffmpeg \
-        libasio-dev \
-        libbullet-dev \
-        libtinyxml2-dev \
-        libcunit1-dev \
-        libmnl0 \
-        libmnl-dev \
-        libv4l-dev \
-        libyaml-cpp-dev \
-        libopencv-dev \
-        libpython3.10 \
-        libx264-dev \
-        kmod \
-        patchelf \
-        python3-opencv \
-        nlohmann-json3-dev
-
-# Core dev libraries. Pass "--allow-downgrades" to downgrade Opencv from 4.8.* to 4.5.4
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ffmpeg \
-    gfortran \
-    graphicsmagick-libmagick-dev-compat \
-    jq \
-    kmod \
-    lcov \
-    libasio-dev \
-    libassimp-dev \
-    libatlas-base-dev \
-    libblas3 \
-    libatlas3-base \
-    libboost-all-dev \
-    libboost-dev \
-    libceres-dev \
-    libbullet-dev \
-    libcunit1-dev \
-    libffi7 \
-    libfreetype6 \
-    libgraphicsmagick++1-dev \
-    libhidapi-libusb0 \
-    libinput10 \
-    libjpeg8 \
-    liblapack3 \
-    libmnl0 \
-    libmnl-dev \
-    libncurses5-dev \
-    libode-dev \
-    libopenblas0 \
-    libopencv-dev \
-    libopenmpi3 \
-    libpcap-dev \
-    libpcl-dev \
-    libsuitesparse-dev \
-    libtinyxml2-dev \
-    libturbojpeg \
-    linuxptp \
-    libunwind8 \
-    libv4l-0 \
-    libx264-dev \
-    libxaw7-dev \
-    libyaml-cpp-dev \
-    llvm-14 \
-    nlohmann-json3-dev \
-    python3-opencv \
-    python3-scipy \
-    && sudo rm -rf /var/lib/apt/lists/* \
-    && sudo apt-get clean
-
-# Additional Python dependencies. Try with -U flag
-RUN python3 -m pip install -U \
-        argcomplete \
-        autopep8 \
-        flake8==4.0.1 \
-        flake8-blind-except \
-        flake8-builtins \
-        flake8-class-newline \
-        flake8-comprehensions \
-        flake8-deprecated \
-        flake8-docstrings \
-        flake8-import-order \
-        flake8-quotes \
-        onnx \
-        pydocstyle \
-        scikit-learn \
-        ninja \
-        networkx \
-        numpy \
-        numpy-quaternion \
-        pyyaml \
-        "setuptools_scm>=6.2" \
-        trimesh \
-        "yourdfpy>=0.0.53" \
-        "warp-lang>=0.9.0" \
-        "scipy>=1.7.0" \
-        tqdm \
-        importlib_resources
-
-#RUN python3 -m pip install -U \
-#    Cython \
-#    pymongo \
-#    wheel \
-#    scikit-learn \
-#    ninja \
-#    networkx \
-#    "numpy==1.26.4" \
-#    numpy-quaternion \
-#    pyyaml \
-#    "setuptools_scm>=6.2" \
-#    trimesh \
-#    "yourdfpy>=0.0.53" \
-#    "warp-lang>=0.9.0" \
-#    "scipy>=1.7.0" \
-#    tqdm \
-#    importlib_resources
-
-# Install nvv4l2 for GXF Multimedia h264 codec
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-            nvv4l2 \
-    && ln -s /usr/lib/x86_64-linux-gnu/libnvcuvid.so.1 /usr/lib/x86_64-linux-gnu/libnvcuvid.so \
-    && ln -s /usr/lib/x86_64-linux-gnu/libnvidia-encode.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
-
-# Install VPI packages
-ARG HAS_GPU="true"
-RUN --mount=type=cache,target=/var/cache/apt \
-    if [ "$HAS_GPU" = "true" ]; then \
-	    set -e ; \
-        sudo apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc ; \
-        sudo add-apt-repository "deb http://repo.download.nvidia.com/jetson/x86_64/$(lsb_release -cs) r36.3 main" ; \
-        sudo apt-get update ; \
-        sudo apt-get install libnvvpi3 vpi3-dev ; \
-    fi
-
-# Pytorch
-RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
-        torch \
-        torchvision \
-        torchaudio
-
-# Install Tao converter
-RUN mkdir -p /opt/nvidia/tao && cd /opt/nvidia/tao && \
-    wget --content-disposition 'https://api.ngc.nvidia.com/v2/resources/org/nvidia/team/tao/tao-converter/v5.1.0_8.6.3.1_x86/files?redirect=true&path=tao-converter' -O tao-converter && \
-    chmod 755 tao-converter
-
-ENV PATH="${PATH}:/opt/nvidia/tao"
-ENV TRT_LIB_PATH="/usr/lib/x86_64-linux-gnu"
-ENV TRT_INC_PATH="/usr/include/x86_64-linux-gnu"
-
-# Update environment
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib"
-
-# Install CV-CUDA
-RUN --mount=type=cache,target=/var/cache/apt \
-    cd /tmp && \
-    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
-    dpkg -i nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
-    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb && \
-    dpkg -i nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb
-
-# Add Isaac apt repository
-RUN --mount=type=cache,target=/var/cache/apt \
-    wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
-    grep -qxF "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" /etc/apt/sources.list || \
-    echo "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" | tee -a /etc/apt/sources.list \
-    && sudo apt-get update
-
-## Add Nvidia Isaac dependencies to Rosdep
-#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
-#    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-
-RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
-    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
-
-# Add Isaac ROS packages to be compiled.
-RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
-#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
-#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
-#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
-#    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_map_localization.git && \
-    git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
-    cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
-    rm COLCON_IGNORE
-
-################################ Alternatively, install packages from Debians
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-isaac-ros-visual-slam \
-#    ros-${ROS_DISTRO}-isaac-ros-nvblox \
-    ros-${ROS_DISTRO}-isaac-ros-occupancy-grid-localizer \
-    ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
-    && sudo apt-get clean
-
-#--------------------------------
-# Install Nvidia Isaac Realsense dependencies
-# Note: do not install "ros-${ROS_DISTRO}-isaac-ros-realsense" as it installs realsense libraries which causes realsense failure.
-#--------------------------------
-RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    ros-humble-gxf-isaac-depth-image-proc ros-humble-gxf-isaac-point-cloud ros-humble-gxf-isaac-ros-messages \
-    ros-humble-gxf-isaac-sgm ros-humble-gxf-isaac-utils \
-    ros-humble-isaac-ros-stereo-image-proc ros-humble-isaac-ros-depth-image-proc \
-    ros-humble-isaac-ros-nitros-disparity-image-type ros-humble-isaac-ros-nitros-point-cloud-type
-
-# Install paho-mqtt for isaac_ros_mission_client
-RUN python3 -m pip install -U \
-        paho-mqtt==1.6.1
-
-# Temporary variable for ISAAC_ROS_WS. Todo: remove
-ENV ISAAC_ROS_WS=/shared_dir
-
-## (optional) Install boost version >= 1.78 for boost::span needed by Nvidia Isaac ROS but causes compilation failure for Autoware
-## Current libboost-dev apt packages are < 1.78, so install from tar.gz
+##--------------------------------
+## Setup NVIDIA Isaac packages
+##--------------------------------
+## Fundamentals
 #RUN --mount=type=cache,target=/var/cache/apt \
-#    wget -O /tmp/boost.tar.gz \
-#    https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz \
-#    && (cd /tmp && tar xzf boost.tar.gz) \
-#    && cd /tmp/boost_1_80_0 \
-#    && ./bootstrap.sh --prefix=/usr \
-#    && ./b2 install \
-#    && rm -rf /tmp/boost*
-
-# Add MQTT binaries and libraries
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-add-repository -y ppa:mosquitto-dev/mosquitto-ppa && \
-    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
-    mosquitto \
-    mosquitto-clients && sudo rm -rf /var/lib/apt/lists/* \
-    && sudo apt-get clean
-
-# Patch gtest to make it work with CXX 17
-RUN sudo sed -i '917i #ifdef GTEST_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL' /usr/src/googletest/googletest/include/gtest/internal/gtest-internal.h \
-    && sudo sed -i '920i #endif' /usr/src/googletest/googletest/include/gtest/internal/gtest-internal.h \
-    && sudo sed -i '2392i #if defined(GTEST_INTERNAL_CPLUSPLUS_LANG) && \\\n    GTEST_INTERNAL_CPLUSPLUS_LANG < 201703L\n#define GTEST_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL 1\n#endif' \
-    /usr/src/googletest/googletest/include/gtest/internal/gtest-port.h
-
-# Update environment
-RUN update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-14 14
-ENV LD_LIBRARY_PATH="/opt/nvidia/vpi3/lib64:${LD_LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra:${LD_LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="/usr/local/cuda-12.2/targets/aarch64-linux/lib:${LD_LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra-egl:${LD_LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra/weston:${LD_LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/aarch64-linux-gnu-host"
-ENV PATH="/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/src/tensorrt/bin:${PATH}"
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#        apt-transport-https \
+#        bash-completion \
+#        build-essential \
+#        ca-certificates \
+#        clang-format \
+#        cmake \
+#        curl \
+#        git \
+#        git-lfs \
+#        gnupg2 \
+#        iputils-ping \
+#        locales \
+#        lsb-release \
+#        rsync \
+#        software-properties-common \
+#        wget \
+#        vim \
+#        unzip \
+#        mlocate \
+#	     libgoogle-glog-dev
+#
+## Python basics
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#        python3-pip \
+#        python3-pybind11 \
+#        python3-pytest \
+#        python3-pytest-repeat \
+#        python3-pytest-rerunfailures \
+#        python3-pytest-cov
+#
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    python3-distutils \
+#    python3-pytest-cov \
+#    zlib1g-dev \
+#    libboost-all-dev \
+#    libboost-dev \
+#    libpcl-dev \
+#    libode-dev \
+#    lcov \
+#    python3-zmq \
+#    libxaw7-dev \
+#    libgraphicsmagick++1-dev \
+#    graphicsmagick-libmagick-dev-compat \
+#    libceres-dev \
+#    libsuitesparse-dev \
+#    libncurses5-dev \
+#    libassimp-dev \
+#    libyaml-cpp-dev \
+#    libpcap-dev \
+#    && sudo rm -rf /var/lib/apt/lists/* \
+#    && sudo apt-get clean
+#
+## Core dev libraries
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#        ffmpeg \
+#        libasio-dev \
+#        libbullet-dev \
+#        libtinyxml2-dev \
+#        libcunit1-dev \
+#        libmnl0 \
+#        libmnl-dev \
+#        libv4l-dev \
+#        libyaml-cpp-dev \
+#        libopencv-dev \
+#        libpython3.10 \
+#        libx264-dev \
+#        kmod \
+#        patchelf \
+#        python3-opencv \
+#        nlohmann-json3-dev
+#
+## Core dev libraries. Pass "--allow-downgrades" to downgrade Opencv from 4.8.* to 4.5.4
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ffmpeg \
+#    gfortran \
+#    graphicsmagick-libmagick-dev-compat \
+#    jq \
+#    kmod \
+#    lcov \
+#    libasio-dev \
+#    libassimp-dev \
+#    libatlas-base-dev \
+#    libblas3 \
+#    libatlas3-base \
+#    libboost-all-dev \
+#    libboost-dev \
+#    libceres-dev \
+#    libbullet-dev \
+#    libcunit1-dev \
+#    libffi7 \
+#    libfreetype6 \
+#    libgraphicsmagick++1-dev \
+#    libhidapi-libusb0 \
+#    libinput10 \
+#    libjpeg8 \
+#    liblapack3 \
+#    libmnl0 \
+#    libmnl-dev \
+#    libncurses5-dev \
+#    libode-dev \
+#    libopenblas0 \
+#    libopencv-dev \
+#    libopenmpi3 \
+#    libpcap-dev \
+#    libpcl-dev \
+#    libsuitesparse-dev \
+#    libtinyxml2-dev \
+#    libturbojpeg \
+#    linuxptp \
+#    libunwind8 \
+#    libv4l-0 \
+#    libx264-dev \
+#    libxaw7-dev \
+#    libyaml-cpp-dev \
+#    llvm-14 \
+#    nlohmann-json3-dev \
+#    python3-opencv \
+#    python3-scipy \
+#    && sudo rm -rf /var/lib/apt/lists/* \
+#    && sudo apt-get clean
+#
+## Additional Python dependencies. Try with -U flag
+#RUN python3 -m pip install -U \
+#        argcomplete \
+#        autopep8 \
+#        flake8==4.0.1 \
+#        flake8-blind-except \
+#        flake8-builtins \
+#        flake8-class-newline \
+#        flake8-comprehensions \
+#        flake8-deprecated \
+#        flake8-docstrings \
+#        flake8-import-order \
+#        flake8-quotes \
+#        onnx \
+#        pydocstyle \
+#        scikit-learn \
+#        ninja \
+#        networkx \
+#        numpy \
+#        numpy-quaternion \
+#        pyyaml \
+#        "setuptools_scm>=6.2" \
+#        trimesh \
+#        "yourdfpy>=0.0.53" \
+#        "warp-lang>=0.9.0" \
+#        "scipy>=1.7.0" \
+#        tqdm \
+#        importlib_resources
+#
+##RUN python3 -m pip install -U \
+##    Cython \
+##    pymongo \
+##    wheel \
+##    scikit-learn \
+##    ninja \
+##    networkx \
+##    "numpy==1.26.4" \
+##    numpy-quaternion \
+##    pyyaml \
+##    "setuptools_scm>=6.2" \
+##    trimesh \
+##    "yourdfpy>=0.0.53" \
+##    "warp-lang>=0.9.0" \
+##    "scipy>=1.7.0" \
+##    tqdm \
+##    importlib_resources
+#
+## Install nvv4l2 for GXF Multimedia h264 codec
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#            nvv4l2 \
+#    && ln -s /usr/lib/x86_64-linux-gnu/libnvcuvid.so.1 /usr/lib/x86_64-linux-gnu/libnvcuvid.so \
+#    && ln -s /usr/lib/x86_64-linux-gnu/libnvidia-encode.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-encode.so
+#
+## Install VPI packages
+#ARG HAS_GPU="true"
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    if [ "$HAS_GPU" = "true" ]; then \
+#	    set -e ; \
+#        sudo apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc ; \
+#        sudo add-apt-repository "deb http://repo.download.nvidia.com/jetson/x86_64/$(lsb_release -cs) r36.3 main" ; \
+#        sudo apt-get update ; \
+#        sudo apt-get install libnvvpi3 vpi3-dev ; \
+#    fi
+#
+## Pytorch
+#RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
+#        torch \
+#        torchvision \
+#        torchaudio
+#
+## Install Tao converter
+#RUN mkdir -p /opt/nvidia/tao && cd /opt/nvidia/tao && \
+#    wget --content-disposition 'https://api.ngc.nvidia.com/v2/resources/org/nvidia/team/tao/tao-converter/v5.1.0_8.6.3.1_x86/files?redirect=true&path=tao-converter' -O tao-converter && \
+#    chmod 755 tao-converter
+#
+#ENV PATH="${PATH}:/opt/nvidia/tao"
+#ENV TRT_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+#ENV TRT_INC_PATH="/usr/include/x86_64-linux-gnu"
+#
+## Update environment
+#ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib"
+#
+## Install CV-CUDA
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    cd /tmp && \
+#    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
+#    dpkg -i nvcv-lib-0.5.0_beta-cuda12-x86_64-linux.deb && \
+#    wget https://github.com/CVCUDA/CV-CUDA/releases/download/v0.5.0-beta/nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb && \
+#    dpkg -i nvcv-dev-0.5.0_beta-cuda12-x86_64-linux.deb
+#
+## Add Isaac apt repository
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | apt-key add - && \
+#    grep -qxF "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" /etc/apt/sources.list || \
+#    echo "deb https://isaac.download.nvidia.com/isaac-ros/release-3 $(lsb_release -cs) release-3.0" | tee -a /etc/apt/sources.list \
+#    && sudo apt-get update
+#
+### Add Nvidia Isaac dependencies to Rosdep
+##RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://isaac.download.nvidia.com/isaac-ros/extra_rosdeps.yaml \
+##    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+#
+#RUN curl -o /etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml https://raw.githubusercontent.com/NVIDIA-ISAAC-ROS/isaac_ros_common/main/docker/rosdep/extra_rosdeps.yaml \
+#    && echo "yaml file:///etc/ros/rosdep/sources.list.d/nvidia-isaac.yaml" | tee /etc/ros/rosdep/sources.list.d/00-nvidia-isaac.list
+#
+## Add Isaac ROS packages to be compiled.
+#RUN cd ${BUILD_HOME}/src && git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git && \
+##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git && \
+##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git && \
+##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+##    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_map_localization.git && \
+#    git clone --recursive https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git && \
+#    cd isaac_ros_nvblox/nvblox_examples/realsense_splitter && git update-index --assume-unchanged COLCON_IGNORE && \
+#    rm COLCON_IGNORE
+#
+################################# Alternatively, install packages from Debians
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-${ROS_DISTRO}-isaac-ros-visual-slam \
+##    ros-${ROS_DISTRO}-isaac-ros-nvblox \
+#    ros-${ROS_DISTRO}-isaac-ros-occupancy-grid-localizer \
+#    ros-${ROS_DISTRO}-isaac-ros-examples && sudo rm -rf /var/lib/apt/lists/* \
+#    && sudo apt-get clean
+#
+##--------------------------------
+## Install Nvidia Isaac Realsense dependencies
+## Note: do not install "ros-${ROS_DISTRO}-isaac-ros-realsense" as it installs realsense libraries which causes realsense failure.
+##--------------------------------
+#RUN sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    ros-humble-gxf-isaac-depth-image-proc ros-humble-gxf-isaac-point-cloud ros-humble-gxf-isaac-ros-messages \
+#    ros-humble-gxf-isaac-sgm ros-humble-gxf-isaac-utils \
+#    ros-humble-isaac-ros-stereo-image-proc ros-humble-isaac-ros-depth-image-proc \
+#    ros-humble-isaac-ros-nitros-disparity-image-type ros-humble-isaac-ros-nitros-point-cloud-type
+#
+## Install paho-mqtt for isaac_ros_mission_client
+#RUN python3 -m pip install -U \
+#        paho-mqtt==1.6.1
+#
+## Temporary variable for ISAAC_ROS_WS. Todo: remove
+#ENV ISAAC_ROS_WS=/shared_dir
+#
+### (optional) Install boost version >= 1.78 for boost::span needed by Nvidia Isaac ROS but causes compilation failure for Autoware
+### Current libboost-dev apt packages are < 1.78, so install from tar.gz
+##RUN --mount=type=cache,target=/var/cache/apt \
+##    wget -O /tmp/boost.tar.gz \
+##    https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz \
+##    && (cd /tmp && tar xzf boost.tar.gz) \
+##    && cd /tmp/boost_1_80_0 \
+##    && ./bootstrap.sh --prefix=/usr \
+##    && ./b2 install \
+##    && rm -rf /tmp/boost*
+#
+## Add MQTT binaries and libraries
+#RUN --mount=type=cache,target=/var/cache/apt \
+#    apt-add-repository -y ppa:mosquitto-dev/mosquitto-ppa && \
+#    sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --no-install-recommends \
+#    mosquitto \
+#    mosquitto-clients && sudo rm -rf /var/lib/apt/lists/* \
+#    && sudo apt-get clean
+#
+## Patch gtest to make it work with CXX 17
+#RUN sudo sed -i '917i #ifdef GTEST_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL' /usr/src/googletest/googletest/include/gtest/internal/gtest-internal.h \
+#    && sudo sed -i '920i #endif' /usr/src/googletest/googletest/include/gtest/internal/gtest-internal.h \
+#    && sudo sed -i '2392i #if defined(GTEST_INTERNAL_CPLUSPLUS_LANG) && \\\n    GTEST_INTERNAL_CPLUSPLUS_LANG < 201703L\n#define GTEST_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL 1\n#endif' \
+#    /usr/src/googletest/googletest/include/gtest/internal/gtest-port.h
+#
+## Update environment
+#RUN update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-14 14
+#ENV LD_LIBRARY_PATH="/opt/nvidia/vpi3/lib64:${LD_LIBRARY_PATH}"
+#ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra:${LD_LIBRARY_PATH}"
+#ENV LD_LIBRARY_PATH="/usr/local/cuda-12.2/targets/aarch64-linux/lib:${LD_LIBRARY_PATH}"
+#ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra-egl:${LD_LIBRARY_PATH}"
+#ENV LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra/weston:${LD_LIBRARY_PATH}"
+#ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/aarch64-linux-gnu-host"
+#ENV PATH="/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/src/tensorrt/bin:${PATH}"
 
 # Silence setup.py and easy_install deprecation warnings caused by colcon and setuptools (https://github.com/colcon/colcon-core/issues/454#issuecomment-1142649390)
 ENV PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources,ignore:::setuptools.command.develop
 
 WORKDIR $BUILD_HOME
 #ARG MAKEFLAGS="-j4 -l4"
-ARG SKIPPED_ROSDEP_KEYS="lio_sam fast_lio rf2o_laser_odometry cmake_modules pacmod3_msgs  python3-open3d open3d \
+ARG SKIPPED_ROSDEP_KEYS="k4a lio_sam fast_lio rf2o_laser_odometry cmake_modules pacmod3_msgs  python3-open3d open3d \
     librealsense2 realsense2_camera libopencv-dev  libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
 
 ######### (optional) Disable git warnings. Or downgrade to version setuptools_scm==5.0.0
@@ -983,7 +987,7 @@ RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"  -DDOWNLOAD_ARTIFACTS=ON' \
     ' -DRTABMAP_SYNC_MULTI_RGBD=ON' \
-    ' -DROS_EDITION=${ROS_VERSION}' ' -DHUMBLE_ROS=${ROS_DISTRO}' \
+    -DROS_EDITION=${ROS_1_OR_2}  -DHUMBLE_ROS=${ROS_DISTRO} \
     --mixin release compile-commands ccache
 
 #-----------------------------
